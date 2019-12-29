@@ -8,7 +8,7 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
     def handle(self):
         # self.request is the TCP socket connected to the client
         while True:
-            self.request.sendall("> ")
+            self.request.sendall("\n> ")
             line = self.rfile.readline()
             if line == "":
                 break
@@ -17,13 +17,18 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
                 cmd = data[0]
                 for command in inspect.getmembers(self, predicate=inspect.ismethod):
                     if command[0] == "cmd_" + cmd:
-                        stop = command[1](data)
-                        self.request.sendall("\n")
-                        if stop == True:
+                        ret = command[1](data)
+                        if ret == None:
                             return
+                        elif ret[0] == 0:
+                            self.request.sendall("0 Command OK.%s%s" % ("\n" if len(ret) > 1 else "", "\n".join(ret[1:])))
+                        elif ret[0] == -2:
+                            self.request.sendall("-2 Invalid arguments.")
+                        else:
+                            self.request.sendall("%d Error.%s" % "\n".join(ret[1:]))
                         break
                 else:
-                    self.request.sendall("-1 Command not found.\n\n")
+                    self.request.sendall("-1 Command not found.")
 
     def cmd_pulseoutcond(self, args):
         try:
@@ -32,14 +37,12 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
             delay = int(args[3])
             cond = int(args[4])
         except:
-            self.request.sendall("-2 Invalid arguments.\n")
-            return
+            return [-2]
 
         inp = sipo.getinput(cond)
         if bool(val) != bool(inp):
-            self.cmd_pulseout([None, out, True, delay])
-        else:
-            self.request.sendall("0 Command OK.\n")
+            return self.cmd_pulseout(["", out, 1, delay])
+        return [0]
 
     def cmd_pulseout(self, args):
         try:
@@ -47,70 +50,58 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
             val = int(args[2])
             delay = int(args[3])
         except:
-            self.request.sendall("-2 Invalid arguments.\n")
-            return
+            return [-2]
 
-        self.request.sendall("0 Command OK.\n")
         sipo.setout(out, val)
         time.sleep(delay/1000.0)
         sipo.setout(out, not val)
+        return [0]
 
     def cmd_setout(self, args):
         try:
             out = int(args[1])
             val = int(args[2])
         except:
-            self.request.sendall("-2 Invalid arguments.\n")
-            return
+            return [-2]
 
-        self.request.sendall("0 Command OK.\n")
         sipo.setout(out, val)
-        
+        return [0]
+
     def cmd_getout(self, args):
         try:
             out = int(args[1])
         except:
-            self.request.sendall("-2 Invalid arguments.\n")
-            return
+            return [-2]
 
-        self.request.sendall("0 Command OK.\n")
         val = sipo.getout(out)
-        if val:
-            self.request.sendall("1\n")
-        else:
-            self.request.sendall("0\n")
+        ret = [0]
+        ret.append("1" if val else "0")
+        return ret
 
     def cmd_getin(self, args):
         try:
             inp = int(args[1])
         except:
-            self.request.sendall("-2 Invalid arguments.\n")
-            return
+            return [-2]
 
-        self.request.sendall("0 Command OK.\n")
         val = sipo.getinput(inp)
-        if val:
-            self.request.sendall("1\n")
-        else:
-            self.request.sendall("0\n")
+        ret = [0]
+        ret.append("1" if val else "0")
+        return ret
 
     def cmd_getcachedin(self, args):
         try:
             inp = int(args[1])
         except:
-            self.request.sendall("-2 Invalid arguments.\n")
-            return
+            return [-2]
 
-        self.request.sendall("0 Command OK.\n")
         val = sipo.getcachedinput(inp)
-        if val:
-            self.request.sendall("1\n")
-        else:
-            self.request.sendall("0\n")
+        ret = [0]
+        ret.append("1" if val else "0")
+        return ret
 
     def cmd_quit(self, args):
         self.request.sendall("0 Bye Bye!\n")
-        return True
 
 
 if __name__ == "__main__":
