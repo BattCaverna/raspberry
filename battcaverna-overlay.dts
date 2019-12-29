@@ -1,0 +1,29 @@
+
+/dts-v1/;
+/plugin/;
+
+/{
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target = <&uart0>;
+		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = <&uart0_pins>;
+			linux,rs485-enabled-at-boot-time;
+			rs485-rts-active-low;
+			status = "okay";
+		};
+	};
+
+	fragment@1 {
+		target = <&gpio>;
+		__overlay__ {
+			uart0_pins: uart0_pins {
+				brcm,pins = <14 15 17>;
+				brcm,function = <4 4 7>; //alt0 alt0 alt3
+				brcm,pull = <0 2 0>;
+			};
+		};
+	};
+};
