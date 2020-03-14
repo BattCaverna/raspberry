@@ -7,8 +7,8 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
 
     def handle(self):
         # self.request is the TCP socket connected to the client
+        reply = ""
         while True:
-            self.request.sendall("\n> ")
             line = self.rfile.readline()
             if line == "":
                 break
@@ -18,17 +18,21 @@ class MyTCPHandler(SocketServer.StreamRequestHandler):
                 for command in inspect.getmembers(self, predicate=inspect.ismethod):
                     if command[0] == "cmd_" + cmd:
                         ret = command[1](data)
-                        if ret == None:
+                        if ret is None:
                             return
                         elif ret[0] == 0:
-                            self.request.sendall("0 Command OK.%s%s" % ("\n" if len(ret) > 1 else "", "\n".join(ret[1:])))
+                            reply = "0 Command OK.%s%s" % ("\n" if len(ret) > 1 else "", "\n".join(ret[1:]))
                         elif ret[0] == -2:
-                            self.request.sendall("-2 Invalid arguments.")
+                            reply = "-2 Invalid arguments."
                         else:
-                            self.request.sendall("%d Error.%s" % "\n".join(ret[1:]))
+                            reply = "%d Error.%s" % "\n".join(ret[1:])
                         break
                 else:
-                    self.request.sendall("-1 Command not found.")
+                    reply = "-1 Command not found."
+            else:
+                reply = ""
+
+            self.request.sendall("%s\n" % reply)
 
     def cmd_pulseoutcond(self, args):
         try:
